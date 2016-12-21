@@ -9,8 +9,14 @@ pacman::p_load(
   RColorBrewer,
   lattice, latticeExtra
 )
-# Figure-drawing 
+
+# Numerators here 
 mdd_tidy <- read_csv("tidy_data/tidied_data.csv")
+
+
+# Denominators here 
+pop_data <- read_csv("tidy_data/population_counts.csv", col_types = "cccid")
+
 
 mdd_tidy %>% 
   filter(!is.na(age)) %>% 

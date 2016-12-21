@@ -3,3 +3,5 @@
 .RData
 .Ruserdata
 who_bulk/*
+tidy_data/*
+figures/*

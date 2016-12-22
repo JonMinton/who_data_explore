@@ -10,12 +10,9 @@ pacman::p_load(
   lattice, latticeExtra
 )
 
-# Numerators here 
-mdd_tidy <- read_csv("tidy_data/tidied_data.csv")
+# Data are here 
+all_tidy <- read_csv("tidy_data/tidied_data.csv")
 
-
-# Denominators here 
-pop_data <- read_csv("tidy_data/population_counts.csv", col_types = "cccid")
 
 
 mdd_tidy %>% 

@@ -10,6 +10,8 @@ rm(list = ls())
 pacman::p_load(
   tidyverse,
   stringr,
+  forcats,
+  
   ggplot2,
   lattice, latticeExtra
 )
@@ -136,7 +138,65 @@ rm(age_fst, age_lst)
 mdd_tidy %>% 
   left_join(age_labels, by = c("age" = "value")) -> mdd_tidy
 
-write_csv(mdd_tidy, "tidy_data/tidied_data.csv")
+# age_group labelling in population df is neater, so recoding mdd to these categories 
+
+mdd_tidy %>% 
+  mutate(age = fct_recode(
+    age,
+    "all"   = "All ages",
+    "1"     = "< 1 year",
+    "1_4"   = "1  - 4",   
+    "5_9"   = "5  - 9",
+    "10_14" = "10 - 14",
+    "15_19" = "15 - 19",  
+    "20_24" = "20 - 24",  
+    "25_29" = "25 - 29",  
+    "30_34" = "30 - 34",
+    "35_39" = "35 - 39",  
+    "40_44" = "40 - 44",  
+    "45_49" = "45 - 49",  
+    "50_54" = "50 - 54",  
+    "55_59" = "55 - 59",  
+    "60_64" = "60 - 64",
+    "65_69" = "65 - 69",
+    "70_74" = "70 - 74",
+    "75_79" = "75 - 79",
+    "80_84" = "80 - 84",
+    "85_89" = "85 - 89",  
+    "90_94" = "90 - 94",  
+    "95"    = "95 +",
+    NULL    = "85 +"   
+  ) 
+) -> mdd_tidy
+
+
+
+# Now to add population 
+
+Population %>% 
+  gather(key = "age_group", value = "population_count", p_all:p_95) %>% 
+  mutate(age_group = str_replace(age_group, "^p_", "")) %>% 
+  left_join(Gender, by = c("Gender" ="GenderId")) %>% 
+  select(-Gender) %>% 
+  rename(sex = Title) %>% 
+  select(
+    country = Country, year = yId, 
+    sex, age = age_group, 
+    population_count
+  ) -> pop_tidy
+
+mdd_tidy %>% inner_join(pop_tidy, by = c("country", "year", "sex", "age")) -> combined_tidy
+
+
+
+#mdd long should be combined with AgeGroups_AgeGroupTypes
+
+
+
+
+
+
+write_csv(combined_tidy, "tidy_data/tidied_data.csv")
 
 
 rm(age_labels, AgeGroups, AgeGroups_AgeGroupTypes, MDD) 

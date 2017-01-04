@@ -4,6 +4,7 @@ rm(list = ls())
 
 pacman::p_load(
   tidyverse,
+  readxl,
   stringr,
   ggplot2,
   RColorBrewer,
@@ -12,8 +13,12 @@ pacman::p_load(
 
 # Data are here 
 all_tidy <- read_csv("tidy_data/tidied_data.csv")
+diagnosis <-  read_csv("who_bulk/exported_text/Diagnosis.txt",col_types = "cccc") # to convert from code to description 
+# and chapter 
+icd_chap <- read_excel(path = "tidy_data/icd_details.xlsx", sheet = "ICD_Chapters") %>% .[,c(1:4)]
 
 
+# All cause mortality in Russia -------------------------------------------
 
 all_tidy %>% 
   filter(!is.na(age)) %>% 
@@ -46,7 +51,7 @@ all_tidy %>%
     cuts = 40
   )
 
-
+# Log scale
 all_tidy %>% 
   filter(!is.na(age)) %>% 
   filter(!(age %in% c("all", "85_89","90_94", "95"))) %>% 
@@ -115,6 +120,120 @@ all_tidy %>%
 png("figures/three_country_comparisons/total_log10.png", height = 40, width = 40, units = "cm", res = 300)
 print(p)
 dev.off()
+
+
+# Russia - Labelled ---------------------------------------------
+
+
+# The information in Diagnosis can be used to provide descriptions 
+# for each of the disease types 
+# It appears the coding involve both a combinatino of chapters and sub-chapters 
+
+tmp1 <- diagnosis %>% 
+  filter(Coding == "101") %>% 
+  select(code = Code, title_who = Title)
+
+tmp2 <- icd_chap %>% 
+  filter(ICD == 10) %>% 
+  select(chapter = Chapter, title_icd = Title)
+
+tmp3 <- tmp1 %>% 
+  inner_join(tmp2, by = c("title_who" = "title_icd"))
+
+
+
+# For Russia 
+all_tidy %>% 
+  filter(country == "RU") %>% 
+  right_join(tmp3, by = c("mort_code" = "code")) %>% 
+  filter(!is.na(age)) %>% 
+  filter(!(age %in% c("all", "85_89","90_94", "95"))) %>% 
+  mutate(age = ordered(
+    age, 
+    levels = c("1", "1_4", "5_9", "10_14", "15_19", "20_24", "25_29", "30_34", "35_39", "40_44",
+               "45_49", "50_54", "55_59", "60_64", "65_69", "70_74", "75_79", "80_84" )
+  )) %>%   
+  select(year, sex, age, death_count, population_count, chapter, title_who) -> dta_ru
+
+rm(tmp1, tmp2, tmp3)
+
+# Proof of concept: 
+dta_ru %>% 
+  mutate(death_rate = death_count / population_count) %>% 
+  filter(chapter == 1) %>% 
+  levelplot(
+    log(death_rate, 10) ~ year * age | sex , 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.0), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main="Russia, Chapter 1, log10 mortality",
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=0.9), 
+      y=list(cex=0.9),
+      alternating=3
+    ),
+    cuts = 40
+  )
+
+png("figures/three_country_comparisons/Russia/log10_chapter.png", height = 30, width = 80, units = "cm", res = 300)
+dta_ru %>% 
+  mutate(death_rate = death_count / population_count) %>% 
+  mutate(chapter = factor(chapter)) %>% 
+  filter(!chapter %in% c(7, 8, 16)) %>% 
+  levelplot(
+    log(death_rate, 10) ~ year * age | chapter + sex , 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.0), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main="Log10 Mortality by ICD-10 Chapter, Russia",
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=0.9), 
+      y=list(cex=0.9),
+      alternating=3
+    ),
+    cuts = 40
+  )
+dev.off()
+
+png("figures/three_country_comparisons/Russia/ident_chapter.png", height = 30, width = 80, units = "cm", res = 300)
+dta_ru %>% 
+  mutate(death_rate = death_count / population_count) %>% 
+  mutate(chapter = factor(chapter)) %>% 
+  filter(!chapter %in% c(7, 8, 16)) %>% 
+  levelplot(
+    death_rate ~ year * age | chapter + sex , 
+    data=., 
+    region=T, 
+    strip=strip.custom(par.strip.text=list(cex=1.0), bg="grey"),
+    ylab=list(label="Age in years", cex=1.4),
+    xlab=list(label="Year", cex=1.4),
+    cex=1.4,
+    col.regions= rev(colorRampPalette(brewer.pal(12, "Paired"))(200)),
+    main="Mortality by ICD-10 Chapter, Russia",
+    labels=list(cex=1.2),
+    col="black",
+    scales=list(
+      x=list(cex=0.9), 
+      y=list(cex=0.9),
+      alternating=3
+    ),
+    cuts = 40
+  )
+dev.off()
+
+
 
 
 # Now to automate the comparison of these three countries by cause of death 
